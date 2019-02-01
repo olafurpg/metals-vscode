@@ -56,3 +56,29 @@ export interface MetalsInputBoxResult {
   value?: string;
   cancelled?: boolean;
 }
+
+export interface TreeViewNode {
+  uri: string;
+  label: string;
+  isCollapsible: boolean;
+}
+export namespace MetalsTreeViewDidChange {
+  export const type = new NotificationType<TreeViewNode, void>(
+    "metalsTreeView/didChange"
+  );
+}
+
+export interface MetalsTreeViewGetChildrenParams {
+  uri?: string;
+}
+export interface MetalsTreeViewGetChildrenResult {
+  nodes: TreeViewNode[];
+}
+export namespace MetalsTreeViewGetChildren {
+  export const type = new RequestType<
+    MetalsTreeViewGetChildrenParams,
+    MetalsTreeViewGetChildrenResult,
+    void,
+    void
+  >("metalsTreeView/getChildren");
+}

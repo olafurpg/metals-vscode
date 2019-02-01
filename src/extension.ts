@@ -33,12 +33,15 @@ import {
   MetalsStatus,
   MetalsDidFocus,
   ExecuteClientCommand,
-  MetalsInputBox
+  MetalsInputBox,
+  MetalsTreeViewDidChange
 } from "./protocol";
 import { LazyProgress } from "./lazy-progress";
 import * as fs from "fs";
 import * as semver from "semver";
 import { getJavaHome } from "./getJavaHome";
+import { startTreeView } from "./treeview";
+import { start } from "repl";
 
 const outputChannel = window.createOutputChannel("Metals");
 const openSettingsAction = "Open settings";
@@ -207,6 +210,8 @@ function launchMetals(
     });
   });
 
+  // startTreeView(client, outputChannel);
+
   context.subscriptions.push(client.start());
 
   client.onReady().then(_ => {
@@ -373,6 +378,8 @@ function launchMetals(
         );
       });
     });
+
+    context.subscriptions.concat(startTreeView(client, outputChannel));
   });
 }
 

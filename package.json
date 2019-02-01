@@ -43,6 +43,7 @@
   "activationEvents": [
     "onLanguage:scala",
     "workspaceContains:build.sbt",
+    "onView:metalsTreeView",
     "workspaceContains:project/build.properties"
   ],
   "contributes": {
@@ -138,6 +139,14 @@
         {
           "command": "metals.doctor-run",
           "when": "editorLangId == scala"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "metalsTreeView",
+          "name": "Metals"
         }
       ]
     }
