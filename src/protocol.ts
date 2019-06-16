@@ -1,6 +1,6 @@
 import { RequestType, NotificationType } from "vscode-jsonrpc";
 import { ExecuteCommandParams } from "vscode-languageclient";
-import { InputBoxOptions } from "vscode";
+import { InputBoxOptions, Command, Range } from "vscode";
 
 "use strict";
 
@@ -58,11 +58,64 @@ export interface MetalsInputBoxResult {
 }
 
 export namespace MetalsWindowStateDidChange {
-  export const type = new NotificationType<MetalsWindowStateDidChangeParams, void>(
-    "metals/windowStateDidChange"
-  );
+  export const type = new NotificationType<
+    MetalsWindowStateDidChangeParams,
+    void
+  >("metals/windowStateDidChange");
 }
 
 export interface MetalsWindowStateDidChangeParams {
   focused: boolean;
+}
+
+// ==================
+// Tree view protocol
+// ==================
+
+export interface MetalsTreeViewDidChangeParams {
+  nodes: TreeViewNode[];
+}
+
+export interface TreeViewNode {
+  viewId: string;
+  nodeUri?: string;
+  label: string;
+  command?: Command;
+  tooltip?: string;
+  isCollapsible: boolean;
+}
+
+export interface MetalsTreeViewChildrenParams {
+  viewId: string;
+  nodeUri?: string;
+}
+
+export interface MetalsTreeViewChildrenResult {
+  nodes: TreeViewNode[];
+}
+
+export namespace MetalsTreeViewDidChange {
+  export const type = new NotificationType<MetalsTreeViewDidChangeParams, void>(
+    "metals/treeViewDidChange"
+  );
+}
+
+export namespace MetalsTreeViewChildren {
+  export const type = new RequestType<
+    MetalsTreeViewChildrenParams,
+    MetalsTreeViewChildrenResult,
+    void,
+    void
+  >("metals/treeViewChildren");
+}
+
+export interface MetalsGoToParams {
+  uri: string;
+  position: Range;
+}
+
+export namespace MetalsGoTo {
+  export const type = new NotificationType<MetalsGoToParams, void>(
+    "metals/goto"
+  );
 }

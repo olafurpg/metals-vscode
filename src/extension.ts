@@ -15,7 +15,10 @@ import {
   ViewColumn,
   OutputChannel,
   ConfigurationTarget,
-  WorkspaceConfiguration
+  WorkspaceConfiguration,
+  Uri,
+  Range,
+  Selection
 } from "vscode";
 import {
   LanguageClient,
@@ -36,13 +39,15 @@ import {
   ExecuteClientCommand,
   MetalsInputBox,
   MetalsWindowStateDidChange,
-  MetalsWindowStateDidChangeParams
+  MetalsWindowStateDidChangeParams,
+  MetalsGoTo
 } from "./protocol";
 import { LazyProgress } from "./lazy-progress";
 import * as fs from "fs";
 import * as semver from "semver";
 import { getJavaHome } from "./getJavaHome";
 import { getJavaOptions } from "./getJavaOptions";
+import { startTreeView } from "./treeview";
 
 const outputChannel = window.createOutputChannel("Metals");
 const openSettingsAction = "Open settings";
@@ -366,6 +371,26 @@ function launchMetals(
       }
     });
 
+    registerCommand("metals.goto", args => {
+      outputChannel.appendLine("goto: " + JSON.stringify(args));
+      client.sendRequest(ExecuteCommandRequest.type, {
+        command: "goto",
+        arguments: args
+      });
+    });
+
+    client.onNotification(MetalsGoTo.type, params => {
+      outputChannel.appendLine("goto: " + JSON.stringify(params));
+      workspace.openTextDocument(Uri.parse(params.uri)).then(textDocument => {
+        window.showTextDocument(textDocument);
+        let editor = window.activeTextEditor;
+        if (!editor) return;
+        let range = editor.document.lineAt(params.position.start.line).range;
+        editor.selection = new Selection(range.start, range.end);
+        editor.revealRange(range);
+      });
+    });
+
     window.onDidChangeActiveTextEditor(editor => {
       if (editor && editor.document.languageId == "scala") {
         client.sendNotification(
@@ -436,6 +461,7 @@ function launchMetals(
         );
       });
     });
+    context.subscriptions.concat(startTreeView(client, outputChannel));
   });
 }
 
