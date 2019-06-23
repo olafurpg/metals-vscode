@@ -39,7 +39,9 @@ import {
   MetalsDidFocus,
   ExecuteClientCommand,
   MetalsInputBox,
-  MetalsWindowStateDidChange
+  MetalsWindowStateDidChange,
+  MetalsTreeViews,
+  MetalsRevealTreeView
 } from "./protocol";
 import { LazyProgress } from "./lazy-progress";
 import * as fs from "fs";
@@ -52,6 +54,7 @@ import ProtocolCompletionItem from "vscode-languageclient/lib/protocolCompletion
 const outputChannel = window.createOutputChannel("Metals");
 const openSettingsAction = "Open settings";
 const openSettingsCommand = "workbench.action.openSettings";
+var treeViews: MetalsTreeViews | undefined = undefined;
 
 export async function activate(context: ExtensionContext) {
   detectLaunchConfigurationChanges();
@@ -330,31 +333,39 @@ function launchMetals(
     client.onNotification(ExecuteClientCommand.type, params => {
       const isRun = params.command === "metals-doctor-run";
       const isReload = params.command === "metals-doctor-reload";
-      const isGoto = params.command === "metals-goto-location";
       if (isRun || (doctor && isReload)) {
         const html = params.arguments && params.arguments[0];
         if (typeof html === "string") {
           const panel = getDoctorPanel(isReload);
           panel.webview.html = html;
         }
-      } else if (isGoto) {
-        outputChannel.appendLine("goto: " + JSON.stringify(params));
-        const location = params.arguments && (params.arguments[0] as Location);
-        if (location) {
-          workspace
-            .openTextDocument(Uri.parse(location.uri))
-            .then(textDocument => {
-              window.showTextDocument(textDocument);
-              let editor = window.activeTextEditor;
-              if (!editor) return;
-              let range = editor.document.lineAt(location.range.start.line)
-                .range;
-              editor.selection = new Selection(range.start, range.end);
-              editor.revealRange(range);
-            });
-        }
       } else {
-        outputChannel.appendLine(`unknown command: ${params.command}`);
+        switch (params.command) {
+          case "metals-goto-location":
+            const location =
+              params.arguments && (params.arguments[0] as Location);
+            if (location) {
+              workspace
+                .openTextDocument(Uri.parse(location.uri))
+                .then(textDocument => {
+                  window.showTextDocument(textDocument);
+                  let editor = window.activeTextEditor;
+                  if (!editor) return;
+                  let range = editor.document.lineAt(location.range.start.line)
+                    .range;
+                  editor.selection = new Selection(range.start, range.end);
+                  editor.revealRange(range);
+                });
+            }
+            break;
+          case "metals-reveal-treeview":
+            if (treeViews && params.arguments) {
+              treeViews.reveal(params.arguments[0] as MetalsRevealTreeView);
+            }
+            break;
+          default:
+            outputChannel.appendLine(`unknown command: ${params.command}`);
+        }
       }
 
       // Ignore other commands since they are less important.
@@ -469,7 +480,8 @@ function launchMetals(
         );
       });
     });
-    context.subscriptions.concat(startTreeView(client, outputChannel));
+    treeViews = startTreeView(client, outputChannel);
+    context.subscriptions.concat(treeViews.disposables);
   });
 }
 

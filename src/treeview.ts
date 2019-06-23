@@ -8,23 +8,25 @@ import {
   window,
   OutputChannel,
   Uri,
-  Command,
   TreeView
 } from "vscode";
 import {
   TreeViewNode,
+  MetalsTreeViews,
   MetalsTreeViewChildren,
   MetalsTreeViewDidChange,
-  MetalsTreeViewVisibilityDidChange
+  MetalsTreeViewVisibilityDidChange,
+  MetalsRevealTreeView
 } from "./protocol";
 
 export function startTreeView(
   client: LanguageClient,
   out: OutputChannel
-): Disposable[] {
+): MetalsTreeViews {
   let views: Map<string, MetalsTreeDataProvider> = new Map();
+  let treeViews: Map<string, TreeView<string>> = new Map();
   let viewIds: string[] = ["build", "compile"];
-  const treeViews = viewIds.map(viewId => {
+  const disposables = viewIds.map(viewId => {
     let provider = new MetalsTreeDataProvider(client, out, viewId, views);
     views.set(viewId, provider);
     const view = window.createTreeView(viewId, {
@@ -53,7 +55,15 @@ export function startTreeView(
       }
     });
   });
-  return ([] as Disposable[]).concat(...treeViews);
+  return {
+    disposables: ([] as Disposable[]).concat(...disposables),
+    reveal(params: MetalsRevealTreeView): void {
+      const view = treeViews.get(params.viewId);
+      if (view) {
+        view.reveal(params.uri);
+      }
+    }
+  };
 }
 
 class MetalsTreeDataProvider implements TreeDataProvider<string> {

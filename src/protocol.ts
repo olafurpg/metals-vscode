@@ -4,7 +4,8 @@ import {
   InputBoxOptions,
   Command,
   Range,
-  TreeItemCollapsibleState
+  TreeItemCollapsibleState,
+  Disposable
 } from "vscode";
 
 "use strict";
@@ -76,6 +77,16 @@ export interface MetalsWindowStateDidChangeParams {
 // ==================
 // Tree view protocol
 // ==================
+
+export interface MetalsTreeViews {
+  disposables: Disposable[];
+  reveal(params: MetalsRevealTreeView): void;
+}
+
+export interface MetalsRevealTreeView {
+  viewId: string;
+  uri: string;
+}
 
 export interface MetalsTreeViewDidChangeParams {
   nodes: TreeViewNode[];
