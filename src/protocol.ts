@@ -125,6 +125,24 @@ export namespace MetalsTreeViewChildren {
   >("metals/treeViewChildren");
 }
 
+export interface MetalsTreeViewParentParams {
+  viewId: string;
+  nodeUri: string;
+}
+
+export interface MetalsTreeViewParentResult {
+  uri?: string;
+}
+
+export namespace MetalsTreeViewParent {
+  export const type = new RequestType<
+    MetalsTreeViewParentParams,
+    MetalsTreeViewParentResult,
+    void,
+    void
+  >("metals/treeViewParent");
+}
+
 export interface MetalsTreeViewVisibilityDidChangeParams {
   viewId: string;
   visible: boolean;
