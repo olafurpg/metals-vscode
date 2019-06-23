@@ -28,7 +28,8 @@ import {
   ExecuteCommandRequest,
   ShutdownRequest,
   ExitNotification,
-  CancellationToken
+  CancellationToken,
+  Location
 } from "vscode-languageclient";
 import { exec } from "child_process";
 import { ClientCommands } from "./client-commands";
@@ -38,9 +39,7 @@ import {
   MetalsDidFocus,
   ExecuteClientCommand,
   MetalsInputBox,
-  MetalsWindowStateDidChange,
-  MetalsWindowStateDidChangeParams,
-  MetalsGoTo
+  MetalsWindowStateDidChange
 } from "./protocol";
 import { LazyProgress } from "./lazy-progress";
 import * as fs from "fs";
@@ -48,6 +47,7 @@ import * as semver from "semver";
 import { getJavaHome } from "./getJavaHome";
 import { getJavaOptions } from "./getJavaOptions";
 import { startTreeView } from "./treeview";
+import ProtocolCompletionItem from "vscode-languageclient/lib/protocolCompletionItem";
 
 const outputChannel = window.createOutputChannel("Metals");
 const openSettingsAction = "Open settings";
@@ -330,13 +330,33 @@ function launchMetals(
     client.onNotification(ExecuteClientCommand.type, params => {
       const isRun = params.command === "metals-doctor-run";
       const isReload = params.command === "metals-doctor-reload";
+      const isGoto = params.command === "metals-goto-location";
       if (isRun || (doctor && isReload)) {
         const html = params.arguments && params.arguments[0];
         if (typeof html === "string") {
           const panel = getDoctorPanel(isReload);
           panel.webview.html = html;
         }
+      } else if (isGoto) {
+        outputChannel.appendLine("goto: " + JSON.stringify(params));
+        const location = params.arguments && (params.arguments[0] as Location);
+        if (location) {
+          workspace
+            .openTextDocument(Uri.parse(location.uri))
+            .then(textDocument => {
+              window.showTextDocument(textDocument);
+              let editor = window.activeTextEditor;
+              if (!editor) return;
+              let range = editor.document.lineAt(location.range.start.line)
+                .range;
+              editor.selection = new Selection(range.start, range.end);
+              editor.revealRange(range);
+            });
+        }
+      } else {
+        outputChannel.appendLine(`unknown command: ${params.command}`);
       }
+
       // Ignore other commands since they are less important.
     });
 
@@ -376,18 +396,6 @@ function launchMetals(
       client.sendRequest(ExecuteCommandRequest.type, {
         command: "goto",
         arguments: args
-      });
-    });
-
-    client.onNotification(MetalsGoTo.type, params => {
-      outputChannel.appendLine("goto: " + JSON.stringify(params));
-      workspace.openTextDocument(Uri.parse(params.uri)).then(textDocument => {
-        window.showTextDocument(textDocument);
-        let editor = window.activeTextEditor;
-        if (!editor) return;
-        let range = editor.document.lineAt(params.position.start.line).range;
-        editor.selection = new Selection(range.start, range.end);
-        editor.revealRange(range);
       });
     });
 

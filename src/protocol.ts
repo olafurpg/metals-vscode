@@ -1,6 +1,11 @@
 import { RequestType, NotificationType } from "vscode-jsonrpc";
 import { ExecuteCommandParams } from "vscode-languageclient";
-import { InputBoxOptions, Command, Range } from "vscode";
+import {
+  InputBoxOptions,
+  Command,
+  Range,
+  TreeItemCollapsibleState
+} from "vscode";
 
 "use strict";
 
@@ -82,7 +87,7 @@ export interface TreeViewNode {
   label: string;
   command?: Command;
   tooltip?: string;
-  isCollapsible: boolean;
+  collapseState?: "none" | "collapsed" | "expanded";
 }
 
 export interface MetalsTreeViewChildrenParams {
@@ -109,13 +114,14 @@ export namespace MetalsTreeViewChildren {
   >("metals/treeViewChildren");
 }
 
-export interface MetalsGoToParams {
-  uri: string;
-  position: Range;
+export interface MetalsTreeViewVisibilityDidChangeParams {
+  viewId: string;
+  visible: boolean;
 }
 
-export namespace MetalsGoTo {
-  export const type = new NotificationType<MetalsGoToParams, void>(
-    "metals/goto"
-  );
+export namespace MetalsTreeViewVisibilityDidChange {
+  export const type = new NotificationType<
+    MetalsTreeViewVisibilityDidChangeParams,
+    void
+  >("metals/treeViewVisibilityDidChange");
 }

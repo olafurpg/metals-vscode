@@ -8,49 +8,55 @@ import {
   window,
   OutputChannel,
   Uri,
-  Command
+  Command,
+  TreeView
 } from "vscode";
 import {
   TreeViewNode,
   MetalsTreeViewChildren,
-  MetalsTreeViewDidChange
+  MetalsTreeViewDidChange,
+  MetalsTreeViewVisibilityDidChange
 } from "./protocol";
 
 export function startTreeView(
   client: LanguageClient,
   out: OutputChannel
 ): Disposable[] {
-  let views: Map<string, MetalsTreeView> = new Map();
-  let viewIds: string[] = ["commands", "build", "compile"];
-  const providers = viewIds.map(viewId => {
-    let provider = new MetalsTreeView(client, out, viewId, views);
+  let views: Map<string, MetalsTreeDataProvider> = new Map();
+  let viewIds: string[] = ["build", "compile"];
+  const treeViews = viewIds.map(viewId => {
+    let provider = new MetalsTreeDataProvider(client, out, viewId, views);
     views.set(viewId, provider);
-    return window.createTreeView(viewId, {
+    const view = window.createTreeView(viewId, {
       treeDataProvider: provider
     });
+    const onDidChangeVisibility = view.onDidChangeVisibility(e => {
+      out.appendLine(`view: ${viewId} visible: ${e.visible}`);
+      client.sendNotification(MetalsTreeViewVisibilityDidChange.type, {
+        viewId: viewId,
+        visible: e.visible
+      });
+    });
+    return [view, onDidChangeVisibility];
   });
   client.onNotification(MetalsTreeViewDidChange.type, params => {
     params.nodes.forEach(node => {
-      let treeView = views.get(node.viewId);
-      if (!treeView) {
-        const bar = views.get("commands");
-        return;
-      } else {
+      let dataProvider = views.get(node.viewId);
+      if (!dataProvider) return;
+      if (node.nodeUri) {
+        dataProvider.items.set(node.nodeUri, node);
       }
       if (node.nodeUri) {
-        treeView.items.set(node.nodeUri, node);
-      }
-      if (node.nodeUri) {
-        treeView.didChange.fire(node.nodeUri);
+        dataProvider.didChange.fire(node.nodeUri);
       } else {
-        treeView.didChange.fire(undefined);
+        dataProvider.didChange.fire(undefined);
       }
     });
   });
-  return providers;
+  return ([] as Disposable[]).concat(...treeViews);
 }
 
-class MetalsTreeView implements TreeDataProvider<string> {
+class MetalsTreeDataProvider implements TreeDataProvider<string> {
   didChange = new EventEmitter<string>();
   onDidChangeTreeData?: Event<string> = this.didChange.event;
   items: Map<string, TreeViewNode> = new Map();
@@ -58,22 +64,28 @@ class MetalsTreeView implements TreeDataProvider<string> {
     readonly client: LanguageClient,
     readonly out: OutputChannel,
     readonly viewId: string,
-    readonly views: Map<string, MetalsTreeView>
+    readonly views: Map<string, MetalsTreeDataProvider>
   ) {}
   getTreeItem(uri: string): TreeItem {
     this.out.appendLine("getTreeItem() " + JSON.stringify(uri));
     const item = this.items.get(uri);
     if (!item) return {};
-    return {
+
+    const result: TreeItem = {
       label: item.label,
       id: item.nodeUri,
       resourceUri: item.nodeUri ? Uri.parse(item.nodeUri) : undefined,
-      collapsibleState: item.isCollapsible
-        ? TreeItemCollapsibleState.Collapsed
-        : TreeItemCollapsibleState.None,
+      collapsibleState:
+        item.collapseState == "collapsed"
+          ? TreeItemCollapsibleState.Collapsed
+          : item.collapseState == "expanded"
+          ? TreeItemCollapsibleState.Expanded
+          : TreeItemCollapsibleState.None,
       command: item.command,
       tooltip: item.tooltip
     };
+    result.collapsibleState;
+    return result;
   }
   getChildren(uri?: string): Thenable<string[]> {
     this.out.appendLine("getChildren() " + JSON.stringify(uri));
