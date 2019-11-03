@@ -24,7 +24,12 @@ import {
   Selection,
   TextDocument as VscodeTextDocument,
   TextEditorRevealType,
-  TextEditor
+  TextEditor,
+  DecorationRangeBehavior,
+  DecorationOptions,
+  Position,
+  TextEditorDecorationType,
+  WorkspaceEdit
 } from "vscode";
 import {
   LanguageClient,
@@ -58,11 +63,21 @@ import { startTreeView } from "./treeview";
 import { MetalsFeatures } from "./MetalsFeatures";
 import { MetalsTreeViewReveal, MetalsTreeViews } from "./tree-view-protocol";
 import * as scalaDebugger from "./scalaDebugger";
+import {
+  DecorationTypeDidChange,
+  DecorationsRangesDidChange
+} from "./decoration-protocol";
 
 const outputChannel = window.createOutputChannel("Metals");
 const openSettingsAction = "Open settings";
 const openSettingsCommand = "workbench.action.openSettings";
 let treeViews: MetalsTreeViews | undefined;
+let decorationType: TextEditorDecorationType = window.createTextEditorDecorationType(
+  {
+    isWholeLine: true,
+    rangeBehavior: DecorationRangeBehavior.OpenClosed
+  }
+);
 
 export async function activate(context: ExtensionContext) {
   detectLaunchConfigurationChanges();
@@ -584,6 +599,39 @@ function launchMetals(
     } else {
       outputChannel.appendLine("Debugging Scala sources is not supported");
     }
+    if (features.decorationProvider) {
+      client.onNotification(DecorationTypeDidChange.type, options => {
+        decorationType = window.createTextEditorDecorationType(options);
+      });
+      client.onNotification(DecorationsRangesDidChange.type, params => {
+        const uri = Uri.parse(params.uri);
+        outputChannel.appendLine(JSON.stringify(params));
+        const uris = window.visibleTextEditors.map(e => e.document.uri);
+        outputChannel.appendLine(JSON.stringify(uris));
+        const editor = window.activeTextEditor;
+        if (editor) {
+          outputChannel.appendLine(
+            JSON.stringify(editor.document.uri.toString())
+          );
+        }
+        if (editor && params.uri == editor.document.uri.toString()) {
+          outputChannel.appendLine("adding decorations");
+          outputChannel.appendLine(JSON.stringify(params.options));
+          const options = params.options.map<DecorationOptions>(o => {
+            return {
+              range: new Range(
+                new Position(o.range.start.line, o.range.start.character),
+                new Position(o.range.end.line, o.range.end.character)
+              ),
+              renderOptions: o.renderOptions
+            };
+          });
+          editor.setDecorations(decorationType, options);
+        } else {
+          outputChannel.appendLine("no editor");
+        }
+      });
+    }
   });
 }
 
@@ -815,4 +863,12 @@ function migrateStringSettingToArray(id: string): void {
         ConfigurationTarget.Workspace
       );
   }
+}
+
+function range(start: number, end: number): number[] {
+  var ans: number[] = [];
+  for (let i = start; i <= end; i++) {
+    ans.push(i);
+  }
+  return ans;
 }
