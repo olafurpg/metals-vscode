@@ -832,6 +832,7 @@ function checkServerVersion() {
 function isSupportedLanguage(languageId: TextDocument["languageId"]): boolean {
   switch (languageId) {
     case "scala":
+    case "sc":
     case "java":
       return true;
     default:
