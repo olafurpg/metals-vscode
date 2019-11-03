@@ -9,13 +9,12 @@ export namespace DecorationTypeDidChange {
   );
 }
 
-export interface DecorationRangesDidChangeParams {
+export interface PublishDecorationsParams {
   uri: string;
   options: DecorationOptions[];
 }
 export namespace DecorationsRangesDidChange {
-  export const type = new NotificationType<
-    DecorationRangesDidChangeParams,
-    void
-  >("metals/decorationRangesDidChange");
+  export const type = new NotificationType<PublishDecorationsParams, void>(
+    "metals/publishDecorations"
+  );
 }

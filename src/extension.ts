@@ -543,8 +543,11 @@ function launchMetals(
             cancellable: true
           },
           (progress, progressToken) => {
-            // Open logs so user can keep track of progress.
-            client.outputChannel.show(true);
+            const showLogs = !params.noLogs;
+            if (showLogs) {
+              // Open logs so user can keep track of progress.
+              client.outputChannel.show(true);
+            }
 
             // Update total running time every second.
             let seconds = 0;
