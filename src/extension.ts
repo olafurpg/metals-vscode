@@ -604,7 +604,6 @@ function launchMetals(
         decorationType = window.createTextEditorDecorationType(options);
       });
       client.onNotification(DecorationsRangesDidChange.type, params => {
-        const uri = Uri.parse(params.uri);
         outputChannel.appendLine(JSON.stringify(params));
         const uris = window.visibleTextEditors.map(e => e.document.uri);
         outputChannel.appendLine(JSON.stringify(uris));
@@ -623,6 +622,7 @@ function launchMetals(
                 new Position(o.range.start.line, o.range.start.character),
                 new Position(o.range.end.line, o.range.end.character)
               ),
+              hoverMessage: o.hoverMessage,
               renderOptions: o.renderOptions
             };
           });
